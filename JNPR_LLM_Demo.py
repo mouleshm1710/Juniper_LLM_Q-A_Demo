@@ -228,12 +228,15 @@ if st.session_state.summary_generated:
     st.write(st.session_state.generated_summary)
 
     st.subheader("❓ Ask Specific Question About This Meeting")
-    user_question = st.text_input("Write a Question:")
+    user_question = st.text_input("Write a Question:", key="user_q")
 
-    if user_question and st.button("Ask"):
+    if user_question and (
+        len(st.session_state.qa_history) == 0 or
+        user_question != st.session_state.qa_history[-1]['question']
+    ):
         answer = query_pipeline(user_question)
         st.session_state.qa_history.append({"question": user_question, "answer": answer})
-        st.experimental_rerun()
+        st.rerun()
 
     if st.session_state.qa_history:
         st.markdown("### 🧠 Q&A History")
@@ -246,10 +249,7 @@ if st.session_state.summary_generated:
         st.session_state.summary_generated = False
         st.session_state.generated_summary = ""
         st.session_state.qa_history = []
-        st.experimental_rerun()
-
-
-
+        st.rerun()
 
 
 
