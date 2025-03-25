@@ -239,6 +239,7 @@ def query_pipeline(user_query):
 # === Streamlit Frontend ===
 st.image("juniper_logo.png", width=100)
 st.title("Juniper Meeting Insights Q&A (Working Demo)")
+
 # Suggested questions
 suggested_questions = [
     "What solution did Juniper recommend to XYZ Telecom to reduce latency issues?",
@@ -253,20 +254,21 @@ suggested_questions = [
     "What AI-driven recommendations were provided to optimize resource allocation for Beta Financial Group?"
 ]
 
-# Initialize user input in session state if not present
+# Initialize session state
 if "user_question" not in st.session_state:
     st.session_state["user_question"] = ""
 
-# Display the input box
-user_question = st.text_input("Ask your question about customer meetings:", value=st.session_state["user_question"], key="user_question")
+# Input box
+user_input = st.text_input("Ask your question about customer meetings:", value=st.session_state["user_question"], key="user_question")
 
-# Show suggestions only when the input is focused or empty
-if st.session_state["user_question"] == "":
-    with st.expander("💡 Suggested Example Questions (click to autofill)"):
-        for q in suggested_questions:
-            if st.button(q):
-                st.session_state["user_question"] = q
-                st.experimental_rerun()
+# Simulate 'hover or focus' by showing suggestions when the input is empty or short
+if user_input.strip() == "" or len(user_input.strip()) < 4:
+    st.markdown("💡 *Suggested Questions:*")
+    for q in suggested_questions:
+        if st.button(q):
+            st.session_state["user_question"] = q
+            st.experimental_rerun()
+
 
     
 if user_question:
