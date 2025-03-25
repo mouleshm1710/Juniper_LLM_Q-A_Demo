@@ -235,9 +235,71 @@ def query_pipeline(user_query):
 
 
 # === Streamlit Frontend ===
+st.image("juniper_logo.png", width=180)
 st.title("Juniper Meeting Insights Q&A (Working Demo)")
 
-user_question = st.text_input("Ask your question about customer meetings:")
+# ℹ️ Hoverable Technical Info Tooltip (HTML hack)
+html("""
+<div style='display: flex; align-items: center;'>
+    <h4 style='margin-right: 8px;'>ℹ️</h4>
+    <div style='position: relative; display: inline-block;'>
+        <span style='text-decoration: underline dotted; cursor: help;' title="
+🔍 What this does:
+- Lets you ask natural questions about customer meetings.
+- Retrieves similar past conversations using vector search (FAISS).
+- Sends them to an LLM to generate a relevant answer.
+
+🛡️ Why restricted context?
+- Ensures privacy and domain relevance.
+- Keeps responses tightly aligned to internal transcripts.
+
+🚀 What could enhance this?
+- Add conversational memory.
+- Enable follow-ups & refining queries (chatbot-style UX).
+
+🏠 Why Streamlit?
+- Fast to prototype, but if hosting in-house:
+    → Consider Flask, FastAPI + internal auth proxy.
+
+📈 How to scale?
+- Horizontally: Distribute FAISS across services or use vector DBs.
+- Vertically: Use GPU inference servers or batch incoming LLM requests.
+        ">
+            Hover here for technical notes
+        </span>
+    </div>
+</div>
+""")
+
+
+from streamlit.components.v1 import html
+
+# Suggested starter questions
+suggested_questions = [
+    "What solution did Juniper recommend to XYZ Telecom to reduce latency issues?",
+    "How does Paragon Automation help XYZ Telecom reduce operational costs?",
+    "What kind of failover capability was discussed with XYZ Telecom?",
+    "What network performance issues did XYZ Telecom report?",
+    "Summarize the key concerns raised by Alpha Cloud Services.",
+    "How does Juniper support zero-trust models for Alpha Cloud Services?",
+    "What flexibility does Juniper's SD-WAN solution offer to Alpha Cloud Services?",
+    "What solutions were recommended for audit trails in Beta Financial Group's network?",
+    "How does Juniper ensure sub-second failovers for Beta Financial Group?",
+    "What AI-driven recommendations were provided to optimize resource allocation for Beta Financial Group?"
+]
+
+st.markdown("### 💡 Suggested Questions")
+for question in suggested_questions:
+    if st.button(question):
+        st.session_state["user_question"] = question  # Sets the input below
+
+# Set default state for input
+if "user_question" not in st.session_state:
+    st.session_state["user_question"] = ""
+
+# Input box
+user_question = st.text_input("Ask your question about customer meetings:", value=st.session_state["user_question"])
+###user_question = st.text_input("Ask your question about customer meetings:")
 
     
 if user_question:
