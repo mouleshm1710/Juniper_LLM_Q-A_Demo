@@ -262,12 +262,14 @@ if "user_question" not in st.session_state:
 user_input = st.text_input("Ask your question about customer meetings:", value=st.session_state["user_question"], key="user_question")
 
 # Simulate 'hover or focus' by showing suggestions when the input is empty or short
+def set_question(q):
+    st.session_state["user_question"] = q
+
+# Show suggestions if input is empty or short (simulate "hover/focus")
 if user_input.strip() == "" or len(user_input.strip()) < 4:
     st.markdown("💡 *Suggested Questions:*")
     for q in suggested_questions:
-        if st.button(q):
-            st.session_state["user_question"] = q
-            st.experimental_rerun()
+        st.button(q, on_click=set_question, args=(q,))
 
 
     
