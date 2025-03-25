@@ -234,7 +234,8 @@ Please generate a professional summary (Minutes of the Meeting), capturing key p
             summary = result[0]['generated_text']
             #st.markdown("✅ **Summary:**")
             summary = summary.split("business-friendly.")[-1].strip()
-            st.write(summary)
+            st.markdown(summary, unsafe_allow_html=True)
+            #st.write(summary)
 
             # Step 3: Q&A Mode
             st.subheader("❓ Ask Questions About This Meeting")
