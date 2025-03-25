@@ -174,6 +174,12 @@ def query_pipeline(user_query):
 
 st.image("juniper_logo.png", width=100)
 st.title("Juniper Meeting Insights Q&A (Working Demo)")
+if "summary_generated" not in st.session_state:
+    st.session_state.summary_generated = False
+if "user_question" not in st.session_state:
+    st.session_state.user_question = ""
+if "qa_answer" not in st.session_state:
+    st.session_state.qa_answer = ""
 
 # Step 1: Filters
 customer_list = sorted(list(set([t["customer"] for t in transcripts])))
@@ -220,7 +226,9 @@ Please generate a 200 words complete professional summary (Minutes of the Meetin
                 summary = clean_summary_text(summary)
                 
                 st.write(summary)
-
+                st.session_state.summary_generated = True
+                st.session_state.generated_summary = summary
+                
                 st.subheader("❓ Ask Specific Question About This Meeting")
                 user_question = st.text_input("Write a Question:")
 
