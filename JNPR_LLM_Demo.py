@@ -98,6 +98,7 @@ transcripts = [
     }
 ]
 
+
 # === Chunk Function ===
 def chunk_transcripts(transcripts, chunk_size=5, overlap=1):
     all_chunks = []
@@ -139,8 +140,6 @@ def search_faiss(user_query):
     return retrieved_texts, D[0]
 
 def query_pipeline(user_query):
-    
-    # Regular Q&A
     query_embedding = model.encode([user_query])
     retrieved_chunks, _ = search_faiss(user_query)
 
@@ -149,7 +148,6 @@ def query_pipeline(user_query):
         prompt += f"- {item['chunk']}\n"
     prompt += f"\nAnswer the question. Do not explain your thought process, the following is your question: {user_query}"
 
-    # Call LLM API
     hf_api_token = "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"
     api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
     headers = {"Authorization": f"Bearer {hf_api_token}"}
@@ -167,19 +165,22 @@ def query_pipeline(user_query):
 
     return output.strip()
 
-
 # =============================
 # Streamlit Frontend
 # =============================
 
-st.image("juniper_logo.png", width=100)
-st.title("Juniper Meeting Insights Q&A (Working Demo)")
+# --- Session State Setup ---
 if "summary_generated" not in st.session_state:
     st.session_state.summary_generated = False
+if "generated_summary" not in st.session_state:
+    st.session_state.generated_summary = ""
 if "user_question" not in st.session_state:
     st.session_state.user_question = ""
 if "qa_answer" not in st.session_state:
     st.session_state.qa_answer = ""
+
+st.image("juniper_logo.png", width=100)
+st.title("Juniper Meeting Insights Q&A (Working Demo)")
 
 # Step 1: Filters
 customer_list = sorted(list(set([t["customer"] for t in transcripts])))
@@ -188,11 +189,9 @@ selected_customer = st.selectbox("Select Customer", ["Select"] + customer_list)
 meeting_dates = [t["date"] for t in transcripts if t["customer"] == selected_customer]
 selected_date = st.selectbox("Select Meeting Date", ["Select"] + meeting_dates if selected_customer != "Select" else ["Select"])
 
-
+# Generate MOM
 if st.button("Generate MOM..."):
     if selected_customer != "Select" and selected_date != "Select":
-        #st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
-
         meeting = next((t for t in transcripts if t["customer"] == selected_customer and t["date"] == selected_date), None)
         if meeting:
             prompt = f"""You are an AI assistant helping summarize enterprise customer meetings.
@@ -224,18 +223,171 @@ Please generate a 200 words complete professional summary (Minutes of the Meetin
                 summary = result[0]['generated_text']
                 summary = summary.split("business-friendly.")[-1].strip()
                 summary = clean_summary_text(summary)
-                
-                st.write(summary)
+
                 st.session_state.summary_generated = True
                 st.session_state.generated_summary = summary
-                
-                st.subheader("❓ Ask Specific Question About This Meeting")
-                user_question = st.text_input("Write a Question:")
-
-                if user_question:
-                    output = query_pipeline(user_question)
-                    st.text(output)
-                    if st.button("🔙 Back to Main"):
-                        st.experimental_rerun()
+                st.session_state.user_question = ""
+                st.session_state.qa_answer = ""
             else:
                 st.error("⚠️ LLM failed to generate summary. Check API.")
+
+# Render the summary + Q&A section if summary was generated
+if st.session_state.summary_generated:
+    st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
+    st.write(st.session_state.generated_summary)
+
+    st.subheader("❓ Ask Specific Question About This Meeting")
+    user_question = st.text_input("Write a Question:", value=st.session_state.user_question)
+
+    if user_question and user_question != st.session_state.user_question:
+        st.session_state.user_question = user_question
+        st.session_state.qa_answer = query_pipeline(user_question)
+
+    if st.session_state.qa_answer:
+        st.text(st.session_state.qa_answer)
+
+    if st.button("🔙 Back to Main"):
+        st.session_state.summary_generated = False
+        st.session_state.generated_summary = ""
+        st.session_state.user_question = ""
+        st.session_state.qa_answer = ""
+        st.experimental_rerun()
+
+
+
+
+
+
+# # === Chunk Function ===
+# def chunk_transcripts(transcripts, chunk_size=5, overlap=1):
+#     all_chunks = []
+#     for entry in transcripts:
+#         sentences = entry["transcript"].split('\n')
+#         chunks = []
+#         start = 0
+#         while start < len(sentences):
+#             end = start + chunk_size
+#             chunk = "\n".join(sentences[start:end]).strip()
+#             if chunk:
+#                 chunks.append(chunk)
+#             start += chunk_size - overlap
+#         for chunk in chunks:
+#             all_chunks.append({
+#                 "customer": entry["customer"],
+#                 "date": entry["date"],
+#                 "chunk": chunk
+#             })
+#     return all_chunks
+
+# chunked_data = chunk_transcripts(transcripts)
+# chunk_texts = [c["chunk"] for c in chunked_data]
+
+# # === Embedding & FAISS Setup ===
+# model = SentenceTransformer('all-MiniLM-L6-v2')
+# chunk_embeddings = model.encode(chunk_texts)
+
+# dimension = chunk_embeddings.shape[1]
+# index = faiss.IndexFlatL2(dimension)
+# index.add(np.array(chunk_embeddings))
+
+# id_to_chunk = {i: chunked_data[i] for i in range(len(chunked_data))}
+
+# def search_faiss(user_query):
+#     query_embedding = model.encode([user_query])
+#     D, I = index.search(np.array(query_embedding), k=3)
+#     retrieved_texts = [id_to_chunk[i] for i in I[0]]
+#     return retrieved_texts, D[0]
+
+# def query_pipeline(user_query):
+    
+#     # Regular Q&A
+#     query_embedding = model.encode([user_query])
+#     retrieved_chunks, _ = search_faiss(user_query)
+
+#     prompt = "Here are some meeting notes:\n"
+#     for item in retrieved_chunks:
+#         prompt += f"- {item['chunk']}\n"
+#     prompt += f"\nAnswer the question. Do not explain your thought process, the following is your question: {user_query}"
+
+#     # Call LLM API
+#     hf_api_token = "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"
+#     api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
+#     headers = {"Authorization": f"Bearer {hf_api_token}"}
+#     data = {"inputs": prompt, "parameters": {"max_new_tokens": 150}}
+
+#     response = requests.post(api_url, headers=headers, json=data)
+#     if response.status_code != 200:
+#         return "❌ Error from Hugging Face API."
+
+#     result = response.json()
+#     output = result[0]['generated_text']
+#     output = output.split(user_query)[-1].strip()
+#     output = re.sub(r'[#\$\\]', '', output)
+#     output = re.sub(r'\\boxed\{.*?\}', '', output)
+
+#     return output.strip()
+
+
+# # =============================
+# # Streamlit Frontend
+# # =============================
+
+# st.image("juniper_logo.png", width=100)
+# st.title("Juniper Meeting Insights Q&A (Working Demo)")
+
+# # Step 1: Filters
+# customer_list = sorted(list(set([t["customer"] for t in transcripts])))
+# selected_customer = st.selectbox("Select Customer", ["Select"] + customer_list)
+
+# meeting_dates = [t["date"] for t in transcripts if t["customer"] == selected_customer]
+# selected_date = st.selectbox("Select Meeting Date", ["Select"] + meeting_dates if selected_customer != "Select" else ["Select"])
+
+
+# if st.button("Generate MOM..."):
+#     if selected_customer != "Select" and selected_date != "Select":
+#         #st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
+
+#         meeting = next((t for t in transcripts if t["customer"] == selected_customer and t["date"] == selected_date), None)
+#         if meeting:
+#             prompt = f"""You are an AI assistant helping summarize enterprise customer meetings.
+
+# Meeting: {meeting['customer']}  
+# Date: {meeting['date']}
+
+# Transcript:
+# {meeting['transcript']}
+
+# Please generate a 200 words complete professional summary (Minutes of the Meeting), capturing key points discussed, pain points, proposed solutions, and follow-ups. Keep it complete, concise and business-friendly.
+# """
+
+#             def clean_summary_text(raw_summary: str) -> str:
+#                 content = re.sub(r'^#+\s*', '', raw_summary, flags=re.MULTILINE)
+#                 content = re.sub(r'\*\*|__|\*|_', '', content)
+#                 content = re.sub(r'\n{2,}', '\n\n', content)
+#                 return content
+
+#             hf_api_token = "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"
+#             api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
+#             headers = {"Authorization": f"Bearer {hf_api_token}"}
+#             data = {"inputs": prompt, "parameters": {"max_new_tokens": 300}}
+
+#             response = requests.post(api_url, headers=headers, json=data)
+
+#             if response.status_code == 200:
+#                 result = response.json()
+#                 summary = result[0]['generated_text']
+#                 summary = summary.split("business-friendly.")[-1].strip()
+#                 summary = clean_summary_text(summary)
+                
+#                 st.write(summary)
+                
+#                 st.subheader("❓ Ask Specific Question About This Meeting")
+#                 user_question = st.text_input("Write a Question:")
+
+#                 if user_question:
+#                     output = query_pipeline(user_question)
+#                     st.text(output)
+#                     if st.button("🔙 Back to Main"):
+#                         st.experimental_rerun()
+#             else:
+#                 st.error("⚠️ LLM failed to generate summary. Check API.")
