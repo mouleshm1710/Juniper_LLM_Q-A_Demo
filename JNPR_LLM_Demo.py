@@ -139,37 +139,15 @@ def search_faiss(user_query):
     return retrieved_texts, D[0]
 
 def query_pipeline(user_query):
-    lowered_query = user_query.lower()
-    if any(word in lowered_query for word in ["summary", "summarize", "highlight", "highlights", "key points", "key"]) and \
-       any(cust in lowered_query for cust in ["xyz", "alpha", "beta"]):
+    
+    # Regular Q&A
+    query_embedding = model.encode([user_query])
+    retrieved_chunks, _ = search_faiss(user_query)
 
-        # Summary mode
-        target_cust = None
-        for key in ["xyz", "alpha", "beta"]:
-            if key in lowered_query:
-                target_cust = key
-                break
-
-        full_text = None
-        for entry in transcripts:
-            if target_cust.lower() in entry["customer"].lower():
-                full_text = entry["transcript"]
-                break
-
-        if not full_text:
-            return "Customer not found."
-
-        prompt = f"Here is a meeting transcript:\n{full_text}\n\nPlease summarize the key highlights from the meeting. Avoid repeating the prompt. Answer directly."
-
-    else:
-        # Regular Q&A
-        query_embedding = model.encode([user_query])
-        retrieved_chunks, _ = search_faiss(user_query)
-
-        prompt = "Here are some meeting notes:\n"
-        for item in retrieved_chunks:
-            prompt += f"- {item['chunk']}\n"
-        prompt += f"\nAnswer the following question: {user_query}"
+    prompt = "Here are some meeting notes:\n"
+    for item in retrieved_chunks:
+        prompt += f"- {item['chunk']}\n"
+    prompt += f"\nAnswer the following question: {user_query}"
 
     # Call LLM API
     hf_api_token = "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"
@@ -202,15 +180,16 @@ customer_list = sorted(list(set([t["customer"] for t in transcripts])))
 selected_customer = st.selectbox("Select Customer", ["Select"] + customer_list)
 
 meeting_dates = [t["date"] for t in transcripts if t["customer"] == selected_customer]
-selected_date = st.selectbox("Select Meeting Date", ["Select"] + meeting_dates if selected_customer != "--" else ["--"])
+selected_date = st.selectbox("Select Meeting Date", ["Select"] + meeting_dates if selected_customer != "Select" else ["Select"])
 
-# Step 2: MOM Summary
-if selected_customer != "--" and selected_date != "--":
-    #st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
 
-    meeting = next((t for t in transcripts if t["customer"] == selected_customer and t["date"] == selected_date), None)
-    if meeting:
-        prompt = f"""You are an AI assistant helping summarize enterprise customer meetings.
+if st.button("Generate MOM..."):
+    if selected_customer != "Select" and selected_date != "Select":
+        #st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
+
+        meeting = next((t for t in transcripts if t["customer"] == selected_customer and t["date"] == selected_date), None)
+        if meeting:
+            prompt = f"""You are an AI assistant helping summarize enterprise customer meetings.
 
 Meeting: {meeting['customer']}  
 Date: {meeting['date']}
@@ -221,44 +200,96 @@ Transcript:
 Please generate a 200 words complete professional summary (Minutes of the Meeting), capturing key points discussed, pain points, proposed solutions, and follow-ups. Keep it complete, concise and business-friendly.
 """
 
-        def clean_summary_text(raw_summary: str) -> str:
-            # Remove Markdown headers like #, ##, etc.
-            content = re.sub(r'^#+\s*', '', raw_summary, flags=re.MULTILINE)
+            def clean_summary_text(raw_summary: str) -> str:
+                content = re.sub(r'^#+\s*', '', raw_summary, flags=re.MULTILINE)
+                content = re.sub(r'\*\*|__|\*|_', '', content)
+                content = re.sub(r'\n{2,}', '\n\n', content)
+                return content
+
+            hf_api_token = "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"
+            api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
+            headers = {"Authorization": f"Bearer {hf_api_token}"}
+            data = {"inputs": prompt, "parameters": {"max_new_tokens": 300}}
+
+            with st.spinner("⏳ Generating professional MOM summary..."):
+                response = requests.post(api_url, headers=headers, json=data)
+
+                if response.status_code == 200:
+                    result = response.json()
+                    summary = result[0]['generated_text']
+                    summary = summary.split("business-friendly.")[-1].strip()
+                    summary = clean_summary_text(summary)
+
+                    st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
+                    st.write(summary)
+
+                    st.subheader("❓ Ask Specific Question About This Meeting")
+                    user_question = st.text_input("Write a question:")
+
+                    if user_question:
+                        output = query_pipeline(user_question)
+                        st.text(output)
+                        if st.button("🔙 Back to Main"):
+                            st.experimental_rerun()
+                else:
+                    st.error("⚠️ LLM failed to generate summary. Check API.")
+
+
+# # Step 2: MOM Summary
+# if st.button("Generate MOM...")
+# if selected_customer != "Select" and selected_date != "Select":
+#     #st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
+
+#     meeting = next((t for t in transcripts if t["customer"] == selected_customer and t["date"] == selected_date), None)
+#     if meeting:
+#         prompt = f"""You are an AI assistant helping summarize enterprise customer meetings.
+
+# Meeting: {meeting['customer']}  
+# Date: {meeting['date']}
+
+# Transcript:
+# {meeting['transcript']}
+
+# Please generate a 200 words complete professional summary (Minutes of the Meeting), capturing key points discussed, pain points, proposed solutions, and follow-ups. Keep it complete, concise and business-friendly.
+# """
+
+#         def clean_summary_text(raw_summary: str) -> str:
+#             # Remove Markdown headers like #, ##, etc.
+#             content = re.sub(r'^#+\s*', '', raw_summary, flags=re.MULTILINE)
         
-            # Remove extra asterisks or markdown formatting
-            content = re.sub(r'\*\*|__|\*|_', '', content)
+#             # Remove extra asterisks or markdown formatting
+#             content = re.sub(r'\*\*|__|\*|_', '', content)
         
-            # Remove unnecessary line breaks if needed
-            content = re.sub(r'\n{2,}', '\n\n', content)  # Optional: clean spacing
+#             # Remove unnecessary line breaks if needed
+#             content = re.sub(r'\n{2,}', '\n\n', content)  # Optional: clean spacing
         
-            return content
+#             return content
             
-        # LLM Call
-        hf_api_token = "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"
-        api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
-        headers = {"Authorization": f"Bearer {hf_api_token}"}
-        data = {"inputs": prompt, "parameters": {"max_new_tokens": 300}}
-        with st.spinner("Processing Minutes of the Meeting..."):
-            response = requests.post(api_url, headers=headers, json=data)
-    
-           
-    
-            if response.status_code == 200:
-                result = response.json()
-                summary = result[0]['generated_text']
-                summary = summary.split("business-friendly.")[-1].strip()
-                summary = clean_summary_text(summary)
-                st.write(summary)
-                    
-    
-                # Step 3: Q&A Mode
-                st.subheader("❓ Ask Specific Question About This Meeting")
-                user_question = st.text_input("Write a question:")
-    
-                if user_question:
-                    output = query_pipeline(user_question)
-                    st.text(output)
-                    if st.button("🔙 Back to Main"):
-                        st.experimental_rerun()
-            else:
-                st.error("⚠️ LLM failed to generate summary. Check API.")
+#         # LLM Call
+#         hf_api_token = "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"
+#         api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
+#         headers = {"Authorization": f"Bearer {hf_api_token}"}
+#         data = {"inputs": prompt, "parameters": {"max_new_tokens": 300}}
+#         response = requests.post(api_url, headers=headers, json=data)
+
+       
+
+#         if response.status_code == 200:
+#             result = response.json()
+#             summary = result[0]['generated_text']
+#             summary = summary.split("business-friendly.")[-1].strip()
+#             summary = clean_summary_text(summary)
+#             st.write(summary)
+                
+
+#             # Step 3: Q&A Mode
+#             st.subheader("❓ Ask Specific Question About This Meeting")
+#             user_question = st.text_input("Write a question:")
+
+#             if user_question:
+#                 output = query_pipeline(user_question)
+#                 st.text(output)
+#                 if st.button("🔙 Back to Main"):
+#                     st.experimental_rerun()
+#         else:
+#             st.error("⚠️ LLM failed to generate summary. Check API.")
