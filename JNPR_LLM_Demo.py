@@ -247,7 +247,7 @@ if st.session_state.summary_generated:
         st.text(st.session_state.qa_answer)
 
     if "rerun" not in st.session_state:
-    st.session_state.rerun = False
+        st.session_state.rerun = False
 
     if st.button("🔙 Back to Main"):
         st.session_state.summary_generated = False
