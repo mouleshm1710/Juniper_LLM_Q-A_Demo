@@ -133,14 +133,27 @@ index.add(np.array(chunk_embeddings))
 
 id_to_chunk = {i: chunked_data[i] for i in range(len(chunked_data))}
 
-def search_faiss(user_query):
-    query_embedding = model.encode([user_query])
-    D, I = index.search(np.array(query_embedding), k=3)
-    retrieved_texts = [id_to_chunk[i] for i in I[0]]
-    return retrieved_texts, D[0]
+def search_faiss(user_query, customer=None, date=None):
+    # Filter chunks by meeting if customer and date are given
+    if customer and date:
+        filtered_chunks = [c for c in chunked_data if c['customer'] == customer and c['date'] == date]
+        filtered_texts = [c['chunk'] for c in filtered_chunks]
+        if not filtered_texts:
+            return [], []
+        filtered_embeddings = model.encode(filtered_texts)
+        query_embedding = model.encode([user_query])
+        index_local = faiss.IndexFlatL2(filtered_embeddings.shape[1])
+        index_local.add(np.array(filtered_embeddings))
+        D, I = index_local.search(np.array(query_embedding), k=min(3, len(filtered_texts)))
+        return [filtered_chunks[i] for i in I[0]], D[0]
+    else:
+        query_embedding = model.encode([user_query])
+        D, I = index.search(np.array(query_embedding), k=3)
+        retrieved_texts = [id_to_chunk[i] for i in I[0]]
+        return retrieved_texts, D[0]
 
 def query_pipeline(user_query):
-    retrieved_chunks, _ = search_faiss(user_query)
+    retrieved_chunks, _ = search_faiss(user_query, st.session_state.selected_customer, st.session_state.selected_date)
 
     prompt = "Here are some meeting notes:\n"
     for item in retrieved_chunks:
@@ -177,15 +190,15 @@ st.title("Juniper Meeting Insights Q&A (Working Demo)")
 
 # Step 1: Filters
 customer_list = sorted(list(set([t["customer"] for t in transcripts])))
-selected_customer = st.selectbox("Select Customer", ["Select"] + customer_list)
+st.session_state.selected_customer = st.selectbox("Select Customer", ["Select"] + customer_list)
 
-meeting_dates = [t["date"] for t in transcripts if t["customer"] == selected_customer]
-selected_date = st.selectbox("Select Meeting Date", ["Select"] + meeting_dates if selected_customer != "Select" else ["Select"])
+meeting_dates = [t["date"] for t in transcripts if t["customer"] == st.session_state.selected_customer]
+st.session_state.selected_date = st.selectbox("Select Meeting Date", ["Select"] + meeting_dates if st.session_state.selected_customer != "Select" else ["Select"])
 
 # Generate MOM Button
 if st.button("Generate MOM..."):
-    if selected_customer != "Select" and selected_date != "Select":
-        meeting = next((t for t in transcripts if t["customer"] == selected_customer and t["date"] == selected_date), None)
+    if st.session_state.selected_customer != "Select" and st.session_state.selected_date != "Select":
+        meeting = next((t for t in transcripts if t["customer"] == st.session_state.selected_customer and t["date"] == st.session_state.selected_date), None)
         if meeting:
             prompt = f"""You are an AI assistant helping summarize enterprise customer meetings.
 
@@ -239,7 +252,7 @@ if st.session_state.summary_generated:
         st.rerun()
 
     if st.session_state.qa_history:
-        st.markdown("### Q&A History")
+        st.markdown("### 🧠 Q&A History")
         for pair in st.session_state.qa_history:
             st.markdown(f"**Q:** {pair['question']}")
             st.markdown(f"**A:** {pair['answer']}")
