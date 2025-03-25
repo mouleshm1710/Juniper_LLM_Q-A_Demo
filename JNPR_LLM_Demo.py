@@ -193,7 +193,7 @@ st.markdown("""
         <img src='juniper_logo.png' width='80' style='margin-right: 15px;'>
         <h3 style='margin: 0;'>Juniper Meeting Insights Q&A (Working Demo)</h3>
     </div>
-""", unsafe_allow_html=True)")
+""", unsafe_allow_html=True)
 
 # Step 1: Filters
 customer_list = sorted(list(set([t["customer"] for t in transcripts])))
