@@ -237,7 +237,7 @@ if st.session_state.summary_generated:
     st.write(st.session_state.generated_summary)
 
     st.subheader("❓ Ask Specific Question About This Meeting")
-    user_question = st.text_input("Write a Question:", value=st.session_state.user_question)
+    user_question = st.text_input("Write a Question and hit enter:", value=st.session_state.user_question)
 
     if user_question and user_question != st.session_state.user_question:
         st.session_state.user_question = user_question
