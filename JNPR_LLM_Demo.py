@@ -246,12 +246,27 @@ if st.session_state.summary_generated:
     if st.session_state.qa_answer:
         st.text(st.session_state.qa_answer)
 
+    if "rerun" not in st.session_state:
+    st.session_state.rerun = False
+
     if st.button("🔙 Back to Main"):
         st.session_state.summary_generated = False
         st.session_state.generated_summary = ""
         st.session_state.user_question = ""
         st.session_state.qa_answer = ""
-        st.experimental_rerun()
+        st.session_state.rerun = True
+    
+    # Trigger rerun safely at the end of the script
+    if st.session_state.get("rerun", False):
+        st.session_state.rerun = False
+        st.stop()  # Safely stops and reruns the script from top
+    
+    # if st.button("🔙 Back to Main"):
+    #     st.session_state.summary_generated = False
+    #     st.session_state.generated_summary = ""
+    #     st.session_state.user_question = ""
+    #     st.session_state.qa_answer = ""
+    #     st.experimental_rerun()
 
 
 
