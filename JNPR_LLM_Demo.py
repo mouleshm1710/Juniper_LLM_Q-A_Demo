@@ -233,7 +233,6 @@ Please generate a 200 words complete professional summary (Minutes of the Meetin
 
 # Render the summary + Q&A section if summary was generated
 if st.session_state.summary_generated:
-    st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
     st.write(st.session_state.generated_summary)
 
     st.subheader("❓ Ask Specific Question About This Meeting")
