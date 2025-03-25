@@ -218,14 +218,14 @@ Date: {meeting['date']}
 Transcript:
 {meeting['transcript']}
 
-Please generate a 300 words complete professional summary (Minutes of the Meeting), capturing key points discussed, pain points, proposed solutions, and follow-ups. Keep it concise and business-friendly.
+Please generate a 200 words complete professional summary (Minutes of the Meeting), capturing key points discussed, pain points, proposed solutions, and follow-ups. Keep it concise and business-friendly.
 """
 
         # LLM Call
         hf_api_token = "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"
         api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
         headers = {"Authorization": f"Bearer {hf_api_token}"}
-        data = {"inputs": prompt, "parameters": {"max_new_tokens": 300}}
+        data = {"inputs": prompt, "parameters": {"max_new_tokens": 200}}
 
         response = requests.post(api_url, headers=headers, json=data)
 
