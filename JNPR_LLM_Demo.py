@@ -242,12 +242,13 @@ Please generate a 200 words complete professional summary (Minutes of the Meetin
             return content
 
         if response.status_code == 200:
-            result = response.json()
-            summary = result[0]['generated_text']
-            summary = summary.split("business-friendly.")[-1].strip()
-            summary = clean_summary_text(summary)
-            st.spinner("Processing your query...")
-            st.write(summary)
+            with st.spinner("Processing Minutes of the Meeting..."):
+                result = response.json()
+                summary = result[0]['generated_text']
+                summary = summary.split("business-friendly.")[-1].strip()
+                summary = clean_summary_text(summary)
+                st.write(summary)
+                
 
             # Step 3: Q&A Mode
             st.subheader("❓ Ask Specific Question About This Meeting")
