@@ -218,7 +218,7 @@ Date: {meeting['date']}
 Transcript:
 {meeting['transcript']}
 
-Please generate a 300 words professional summary (Minutes of the Meeting), capturing key points discussed, pain points, proposed solutions, and follow-ups. Keep it concise and business-friendly.
+Please generate a 300 words complete professional summary (Minutes of the Meeting), capturing key points discussed, pain points, proposed solutions, and follow-ups. Keep it concise and business-friendly.
 """
 
         # LLM Call
