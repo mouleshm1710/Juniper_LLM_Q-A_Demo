@@ -232,7 +232,8 @@ Please generate a professional summary (Minutes of the Meeting), capturing key p
         if response.status_code == 200:
             result = response.json()
             summary = result[0]['generated_text']
-            st.markdown("✅ **Summary:**")
+            #st.markdown("✅ **Summary:**")
+            summary = summary.split("business-friendly")[-1].strip()
             st.write(summary)
 
             # Step 3: Q&A Mode
