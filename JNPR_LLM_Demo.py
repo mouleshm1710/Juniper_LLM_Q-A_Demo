@@ -186,7 +186,7 @@ if "qa_history" not in st.session_state:
     st.session_state.qa_history = []
 
 
-st.image("juniper_logo.png", width=80)
+st.image("juniperlogo.png", width=80)
 st.markdown("<h3 style='margin-top: -10px;'>Juniper Meeting Insights Q&A (Working Demo)</h3>", unsafe_allow_html=True)
 
 # Step 1: Filters
