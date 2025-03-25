@@ -273,9 +273,14 @@ if user_input.strip() == "" or len(user_input.strip()) < 4:
 
 
     
-if user_question:
+# if user_question:
+#     with st.spinner("Processing your query..."):
+#         output = query_pipeline(user_question)
+#     st.success("✅ Final Insights Generated:")
+#     st.text(output)
+
+if user_input:
     with st.spinner("Processing your query..."):
-        output = query_pipeline(user_question)
+        output = query_pipeline(user_input)
     st.success("✅ Final Insights Generated:")
     st.text(output)
-
