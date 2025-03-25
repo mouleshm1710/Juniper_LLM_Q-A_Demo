@@ -185,15 +185,9 @@ if "generated_summary" not in st.session_state:
 if "qa_history" not in st.session_state:
     st.session_state.qa_history = []
 
-#st.image("juniper_logo.png", width=100)
-#st.title("Juniper Meeting Insights Q&A (Working Demo)")
 
-st.markdown("""
-    <div style='display: flex; align-items: center;'>
-        <img src='juniper_logo.png' width='80' style='margin-right: 15px;'>
-        <h3 style='margin: 0;'>Juniper Meeting Insights Q&A (Working Demo)</h3>
-    </div>
-""", unsafe_allow_html=True)
+st.image("juniper_logo.png", width=80)
+st.markdown("<h3 style='margin-top: -10px;'>Juniper Meeting Insights Q&A (Working Demo)</h3>", unsafe_allow_html=True)
 
 # Step 1: Filters
 customer_list = sorted(list(set([t["customer"] for t in transcripts])))
