@@ -9,8 +9,6 @@ from sentence_transformers import SentenceTransformer
 import streamlit as st
 import requests
 import re
-from streamlit.components.v1 import html
-
 # =============================
 # 1. Load Sample Transcripts
 # =============================
@@ -224,14 +222,6 @@ def query_pipeline(user_query):
     output = re.sub(r'\\boxed\{.*?\}', '', output)  # remove \boxed{}
     output = output.strip()
     
-    # Optional: remove extra duplicated lines
-    # lines = output.splitlines()
-    # cleaned_lines = []
-    # for line in lines:
-    #     if line.strip() not in cleaned_lines:
-    #         cleaned_lines.append(line.strip())
-    
-    #clean_output = "\n".join(cleaned_lines)
     clean_output = output
     return clean_output
 
@@ -240,47 +230,11 @@ def query_pipeline(user_query):
 st.image("juniper_logo.png", width=100)
 st.title("Juniper Meeting Insights Q&A (Working Demo)")
 
-# Suggested questions
-suggested_questions = [
-    "What solution did Juniper recommend to XYZ Telecom to reduce latency issues?",
-    "How does Paragon Automation help XYZ Telecom reduce operational costs?",
-    "What kind of failover capability was discussed with XYZ Telecom?",
-    "What network performance issues did XYZ Telecom report?",
-    "Summarize the key concerns raised by Alpha Cloud Services.",
-    "How does Juniper support zero-trust models for Alpha Cloud Services?",
-    "What flexibility does Juniper's SD-WAN solution offer to Alpha Cloud Services?",
-    "What solutions were recommended for audit trails in Beta Financial Group's network?",
-    "How does Juniper ensure sub-second failovers for Beta Financial Group?",
-    "What AI-driven recommendations were provided to optimize resource allocation for Beta Financial Group?"
-]
-
-# Initialize session state
-if "user_question" not in st.session_state:
-    st.session_state["user_question"] = ""
-
-# Input box
-user_input = st.text_input("Ask your question about customer meetings:", value=st.session_state["user_question"], key="user_question")
-
-# Simulate 'hover or focus' by showing suggestions when the input is empty or short
-def set_question(q):
-    st.session_state["user_question"] = q
-
-# Show suggestions if input is empty or short (simulate "hover/focus")
-if user_input.strip() == "" or len(user_input.strip()) < 4:
-    st.markdown("💡 *Suggested Questions:*")
-    for q in suggested_questions:
-        st.button(q, on_click=set_question, args=(q,))
-
+user_question = st.text_input("Ask your question about customer meetings:")
 
     
-# if user_question:
-#     with st.spinner("Processing your query..."):
-#         output = query_pipeline(user_question)
-#     st.success("✅ Final Insights Generated:")
-#     st.text(output)
-
-if user_input:
+if user_question:
     with st.spinner("Processing your query..."):
-        output = query_pipeline(user_input)
+        output = query_pipeline(user_question)
     st.success("✅ Final Insights Generated:")
     st.text(output)
