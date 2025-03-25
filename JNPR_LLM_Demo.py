@@ -9,16 +9,17 @@ from sentence_transformers import SentenceTransformer
 import streamlit as st
 import requests
 import re
+
 # =============================
-# 1. Load Sample Transcripts
+# Load Sample Transcripts
 # =============================
 
 transcripts = [
-
-    """Meeting with: XYZ Telecom Ltd.
-    Date: Jan 12, 2025
-    
-    Customer: We're facing persistent latency issues in our Asia-Pacific backbone network, especially during peak hours.
+    {
+        "customer": "XYZ Telecom Ltd.",
+        "date": "2025-01-12",
+        "transcript": 
+    """Customer: We're facing persistent latency issues in our Asia-Pacific backbone network, especially during peak hours.
     Juniper Rep: Have you considered implementing dynamic traffic rerouting?
     Customer: Not yet, but we’re looking for a solution with minimal integration effort.
     Juniper Rep: Our MX series routers with Segment Routing can optimize the traffic dynamically.
@@ -37,12 +38,13 @@ transcripts = [
     Customer: What’s the typical deployment timeline?
     Juniper Rep: Depending on complexity, 6-8 weeks including full integration and training.
     Customer: Can we arrange a PoC?
-    Juniper Rep: Absolutely, we’ll prepare a tailored PoC proposal.""",
-
-    """Meeting with: Alpha Cloud Services
-    Date: Feb 3, 2025
-    
-    Customer: Security compliance is key for us. We're SOC2 and ISO27001 certified.
+    Juniper Rep: Absolutely, we’ll prepare a tailored PoC proposal."""
+    },
+    {
+        "customer": "Alpha Cloud Services",
+        "date": "2025-02-03",
+        "transcript": 
+    """Customer: Security compliance is key for us. We're SOC2 and ISO27001 certified.
     Juniper Rep: Our SRX firewalls and ATP provide deep packet inspection and real-time threat detection.
     Customer: We’re exploring zero-trust strategies as well.
     Juniper Rep: Mist AI integrates behavioral monitoring and access policies supporting zero-trust models.
@@ -63,12 +65,13 @@ transcripts = [
     Customer: What's the support model?
     Juniper Rep: 24/7 support with dedicated technical account managers.
     Customer: Can we arrange an architectural workshop?
-    Juniper Rep: Certainly, we can schedule a session next week.""",
-
-    """Meeting with: Beta Financial Group
-    Date: Mar 10, 2025
-    
-    Customer: Regulatory compliance requires audit trails for all data movement.
+    Juniper Rep: Certainly, we can schedule a session next week."""
+    },
+    {
+        "customer": "Beta Financial Group",
+        "date": "2025-03-10",
+        "transcript": 
+    """Customer: Regulatory compliance requires audit trails for all data movement.
     Juniper Rep: Our Contrail Networking supports granular flow logging, simplifying compliance.
     Customer: We're planning a multi-cloud strategy.
     Juniper Rep: Our Cloud Metro solution ensures consistent policy control across clouds.
@@ -92,13 +95,14 @@ transcripts = [
     Juniper Rep: Absolutely, we can set them up in our engagement plan.
     Customer: Any training support?
     Juniper Rep: Yes, customized training programs are available for your team."""
+    }
 ]
 
-def chunk_transcripts(transcripts, chunk_size=3, overlap=1):
+# === Chunk Function ===
+def chunk_transcripts(transcripts, chunk_size=5, overlap=1):
     all_chunks = []
-    for transcript in transcripts:
-        # Split into sentences (basic split, refine if needed)
-        sentences = transcript.split('\n')
+    for entry in transcripts:
+        sentences = entry["transcript"].split('\n')
         chunks = []
         start = 0
         while start < len(sentences):
@@ -106,135 +110,139 @@ def chunk_transcripts(transcripts, chunk_size=3, overlap=1):
             chunk = "\n".join(sentences[start:end]).strip()
             if chunk:
                 chunks.append(chunk)
-            start += chunk_size - overlap  # Move window with overlap
-        all_chunks.extend(chunks)
+            start += chunk_size - overlap
+        for chunk in chunks:
+            all_chunks.append({
+                "customer": entry["customer"],
+                "date": entry["date"],
+                "chunk": chunk
+            })
     return all_chunks
 
-# Chunk original transcripts
-chunked_transcripts = chunk_transcripts(transcripts, chunk_size=5, overlap=1)
+chunked_data = chunk_transcripts(transcripts)
+chunk_texts = [c["chunk"] for c in chunked_data]
 
-# Check total chunks
-print(f"Total sub-transcripts created: {len(chunked_transcripts)}")
-
-
-# Generate embeddings for chunks
+# === Embedding & FAISS Setup ===
 model = SentenceTransformer('all-MiniLM-L6-v2')
-chunk_embeddings = model.encode(chunked_transcripts)
+chunk_embeddings = model.encode(chunk_texts)
 
-# FAISS setup
 dimension = chunk_embeddings.shape[1]
 index = faiss.IndexFlatL2(dimension)
 index.add(np.array(chunk_embeddings))
 
-# Updated mapping
-id_to_chunk = {i: chunked_transcripts[i] for i in range(len(chunked_transcripts))}
+id_to_chunk = {i: chunked_data[i] for i in range(len(chunked_data))}
 
-
-# === Search Function ===
 def search_faiss(user_query):
     query_embedding = model.encode([user_query])
-    D, I = index.search(np.array(query_embedding), k=3)  # top 3
+    D, I = index.search(np.array(query_embedding), k=3)
     retrieved_texts = [id_to_chunk[i] for i in I[0]]
     return retrieved_texts, D[0]
 
-# Map customer names to full transcripts (simple lowercased keys)
-customer_transcript_map = {
-    "xyz": transcripts[0],
-    "alpha": transcripts[1],
-    "beta": transcripts[2]
-}
-
-
 def query_pipeline(user_query):
     lowered_query = user_query.lower()
-    
-    # Check if it's a summary/highlights question
-    if any(word in lowered_query for word in ["summary", "summarize", "highlight", "highlights", "key points",'key']) and \
+    if any(word in lowered_query for word in ["summary", "summarize", "highlight", "highlights", "key points", "key"]) and \
        any(cust in lowered_query for cust in ["xyz", "alpha", "beta"]):
 
-        st.info("📄 Detected summary request - passing full transcript!")
-
-        # Extract customer
+        # Summary mode
         target_cust = None
-        for cust in customer_transcript_map.keys():
-            if cust in lowered_query:
-                target_cust = cust
+        for key in ["xyz", "alpha", "beta"]:
+            if key in lowered_query:
+                target_cust = key
                 break
-        
-        if target_cust:
-            full_text = customer_transcript_map[target_cust]
 
-            # Prepare prompt
-            prompt = f"Here is the full meeting transcript with {target_cust.title()}:\n"
-            prompt += f"{full_text}\n\n"
-            user_query = f"Provide a summary or key highlights. Do not explain your reasoning. Answer directly."
-            prompt += user_query
+        full_text = None
+        for entry in transcripts:
+            if target_cust.lower() in entry["customer"].lower():
+                full_text = entry["transcript"]
+                break
 
-            # Display in frontend
-            with st.expander("📄 Full Transcript Passed to LLM:"):
-                st.write(full_text)
-        else:
-            return "Customer name not recognized. Please mention XYZ, Alpha, or Beta."
+        if not full_text:
+            return "Customer not found."
+
+        prompt = f"Here is a meeting transcript:\n{full_text}\n\nPlease summarize the key highlights from the meeting. Avoid repeating the prompt. Answer directly."
 
     else:
-        # Regular FAISS flow
-        st.info("🔍 Generating query embedding...")
+        # Regular Q&A
         query_embedding = model.encode([user_query])
+        retrieved_chunks, _ = search_faiss(user_query)
 
-        st.info("📂 Searching for similar conversations in Database...")
-        retrieved_texts, distances = search_faiss(user_query)
-        st.success("Top similar conversations retrieved!")
-
-        with st.expander("📄 See Retrieved Conversations"):
-            for i, txt in enumerate(retrieved_texts):
-                st.markdown(f"**Conversation {i+1}:**")
-                st.write(txt)  # Display as clean text block
-
-        # Prepare prompt
-        st.info("📝 Preparing prompt for LLM...")
         prompt = "Here are some meeting notes:\n"
-        for txt in retrieved_texts:
-            prompt += f"- {txt}\n"
-        prompt += f"\nAnswer the question. Do not explain your thought process, the following is your question: {user_query}"
+        for item in retrieved_chunks:
+            prompt += f"- {item['chunk']}\n"
+        prompt += f"\nAnswer the following question: {user_query}"
 
-        with st.expander("📄 Final Prompt Sent to LLM"):
-            st.code(prompt)
-
-    # === LLM API Call (Common) ===
-    st.info("🚀 Sending prompt to LLM...")
-
+    # Call LLM API
     hf_api_token = "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"
     api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
     headers = {"Authorization": f"Bearer {hf_api_token}"}
-    data = {"inputs": prompt, "parameters": {"max_new_tokens": 150}}
+    data = {"inputs": prompt, "parameters": {"max_new_tokens": 200}}
 
     response = requests.post(api_url, headers=headers, json=data)
-    
     if response.status_code != 200:
-        return "❌ Error fetching response from Hugging Face API. Check API key."
-    
+        return "❌ Error from Hugging Face API."
+
     result = response.json()
     output = result[0]['generated_text']
-    
-    # Clean final output
     output = output.split(user_query)[-1].strip()
-    output = re.sub(r'[#\$\\]', '', output)  # remove #, $, \ symbols
-    output = re.sub(r'\\boxed\{.*?\}', '', output)  # remove \boxed{}
-    output = output.strip()
-    
-    clean_output = output
-    return clean_output
+    output = re.sub(r'[#\$\\]', '', output)
+    output = re.sub(r'\\boxed\{.*?\}', '', output)
+
+    return output.strip()
 
 
-# === Streamlit Frontend ===
+# =============================
+# Streamlit Frontend
+# =============================
+
 st.image("juniper_logo.png", width=100)
 st.title("Juniper Meeting Insights Q&A (Working Demo)")
 
-user_question = st.text_input("Ask your question about customer meetings:")
+# Step 1: Filters
+customer_list = sorted(list(set([t["customer"] for t in transcripts])))
+selected_customer = st.selectbox("Select Customer", ["--"] + customer_list)
 
-    
-if user_question:
-    with st.spinner("Processing your query..."):
-        output = query_pipeline(user_question)
-    st.success("✅ Final Insights Generated:")
-    st.text(output)
+meeting_dates = [t["date"] for t in transcripts if t["customer"] == selected_customer]
+selected_date = st.selectbox("Select Meeting Date", ["--"] + meeting_dates if selected_customer != "--" else ["--"])
+
+# Step 2: MOM Summary
+if selected_customer != "--" and selected_date != "--":
+    st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
+
+    meeting = next((t for t in transcripts if t["customer"] == selected_customer and t["date"] == selected_date), None)
+    if meeting:
+        prompt = f"""You are an AI assistant helping summarize enterprise customer meetings.
+
+Meeting: {meeting['customer']}  
+Date: {meeting['date']}
+
+Transcript:
+{meeting['transcript']}
+
+Please generate a professional summary (Minutes of the Meeting), capturing key points discussed, pain points, proposed solutions, and follow-ups. Keep it concise and business-friendly.
+"""
+
+        # LLM Call
+        hf_api_token = "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"
+        api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
+        headers = {"Authorization": f"Bearer {hf_api_token}"}
+        data = {"inputs": prompt, "parameters": {"max_new_tokens": 300}}
+
+        response = requests.post(api_url, headers=headers, json=data)
+
+        if response.status_code == 200:
+            result = response.json()
+            summary = result[0]['generated_text']
+            st.markdown("✅ **Summary:**")
+            st.write(summary)
+
+            # Step 3: Q&A Mode
+            st.subheader("❓ Ask Questions About This Meeting")
+            user_question = st.text_input("Ask a question:")
+
+            if user_question:
+                output = query_pipeline(user_question)
+                st.text(output)
+                if st.button("🔙 Back to Home"):
+                    st.experimental_rerun()
+        else:
+            st.error("⚠️ LLM failed to generate summary. Check API.")
