@@ -225,7 +225,7 @@ Please generate a 200 words complete professional summary (Minutes of the Meetin
         hf_api_token = "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"
         api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
         headers = {"Authorization": f"Bearer {hf_api_token}"}
-        data = {"inputs": prompt, "parameters": {"max_new_tokens": 200}}
+        data = {"inputs": prompt, "parameters": {"max_new_tokens": 300}}
 
         response = requests.post(api_url, headers=headers, json=data)
 
