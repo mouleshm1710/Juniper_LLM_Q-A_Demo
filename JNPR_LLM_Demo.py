@@ -140,7 +140,6 @@ def search_faiss(user_query):
     return retrieved_texts, D[0]
 
 def query_pipeline(user_query):
-    query_embedding = model.encode([user_query])
     retrieved_chunks, _ = search_faiss(user_query)
 
     prompt = "Here are some meeting notes:\n"
@@ -160,24 +159,18 @@ def query_pipeline(user_query):
     result = response.json()
     output = result[0]['generated_text']
     output = output.split(user_query)[-1].strip()
-    output = re.sub(r'[#\$\\]', '', output)
+    output = re.sub(r'[#\\$\\\\]', '', output)
     output = re.sub(r'\\boxed\{.*?\}', '', output)
 
     return output.strip()
 
-# =============================
-# Streamlit Frontend
-# =============================
-
-# --- Session State Setup ---
+# === Streamlit App ===
 if "summary_generated" not in st.session_state:
     st.session_state.summary_generated = False
 if "generated_summary" not in st.session_state:
     st.session_state.generated_summary = ""
-if "user_question" not in st.session_state:
-    st.session_state.user_question = ""
-if "qa_answer" not in st.session_state:
-    st.session_state.qa_answer = ""
+if "qa_history" not in st.session_state:
+    st.session_state.qa_history = []
 
 st.image("juniper_logo.png", width=100)
 st.title("Juniper Meeting Insights Q&A (Working Demo)")
@@ -189,7 +182,7 @@ selected_customer = st.selectbox("Select Customer", ["Select"] + customer_list)
 meeting_dates = [t["date"] for t in transcripts if t["customer"] == selected_customer]
 selected_date = st.selectbox("Select Meeting Date", ["Select"] + meeting_dates if selected_customer != "Select" else ["Select"])
 
-# Generate MOM
+# Generate MOM Button
 if st.button("Generate MOM..."):
     if selected_customer != "Select" and selected_date != "Select":
         meeting = next((t for t in transcripts if t["customer"] == selected_customer and t["date"] == selected_date), None)
@@ -217,7 +210,6 @@ Please generate a 200 words complete professional summary (Minutes of the Meetin
             data = {"inputs": prompt, "parameters": {"max_new_tokens": 300}}
 
             response = requests.post(api_url, headers=headers, json=data)
-
             if response.status_code == 200:
                 result = response.json()
                 summary = result[0]['generated_text']
@@ -226,46 +218,35 @@ Please generate a 200 words complete professional summary (Minutes of the Meetin
 
                 st.session_state.summary_generated = True
                 st.session_state.generated_summary = summary
-                st.session_state.user_question = ""
-                st.session_state.qa_answer = ""
+                st.session_state.qa_history = []
             else:
                 st.error("⚠️ LLM failed to generate summary. Check API.")
 
-# Render the summary + Q&A section if summary was generated
+# === Show Summary & Q&A ===
 if st.session_state.summary_generated:
+    #st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
     st.write(st.session_state.generated_summary)
 
     st.subheader("❓ Ask Specific Question About This Meeting")
-    user_question = st.text_input("Write a Question and hit enter:", value=st.session_state.user_question)
+    user_question = st.text_input("Write a Question:")
 
-    if user_question and user_question != st.session_state.user_question:
-        st.session_state.user_question = user_question
-        st.session_state.qa_answer = query_pipeline(user_question)
+    if user_question and st.button("Ask"):
+        answer = query_pipeline(user_question)
+        st.session_state.qa_history.append({"question": user_question, "answer": answer})
+        st.experimental_rerun()
 
-    if st.session_state.qa_answer:
-        st.text(st.session_state.qa_answer)
-
-    if "rerun" not in st.session_state:
-        st.session_state.rerun = False
+    if st.session_state.qa_history:
+        st.markdown("### 🧠 Q&A History")
+        for pair in st.session_state.qa_history:
+            st.markdown(f"**Q:** {pair['question']}")
+            st.markdown(f"**A:** {pair['answer']}")
+            st.markdown("---")
 
     if st.button("🔙 Back to Main"):
         st.session_state.summary_generated = False
         st.session_state.generated_summary = ""
-        st.session_state.user_question = ""
-        st.session_state.qa_answer = ""
-        st.session_state.rerun = True
-    
-    # Trigger rerun safely at the end of the script
-    if st.session_state.get("rerun", False):
-        st.session_state.rerun = False
-        st.stop()  # Safely stops and reruns the script from top
-    
-    # if st.button("🔙 Back to Main"):
-    #     st.session_state.summary_generated = False
-    #     st.session_state.generated_summary = ""
-    #     st.session_state.user_question = ""
-    #     st.session_state.qa_answer = ""
-    #     st.experimental_rerun()
+        st.session_state.qa_history = []
+        st.experimental_rerun()
 
 
 
