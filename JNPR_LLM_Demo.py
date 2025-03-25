@@ -199,10 +199,10 @@ st.title("Juniper Meeting Insights Q&A (Working Demo)")
 
 # Step 1: Filters
 customer_list = sorted(list(set([t["customer"] for t in transcripts])))
-selected_customer = st.selectbox("Select Customer", ["--"] + customer_list)
+selected_customer = st.selectbox("Select Customer", ["Select"] + customer_list)
 
 meeting_dates = [t["date"] for t in transcripts if t["customer"] == selected_customer]
-selected_date = st.selectbox("Select Meeting Date", ["--"] + meeting_dates if selected_customer != "--" else ["--"])
+selected_date = st.selectbox("Select Meeting Date", ["Select"] + meeting_dates if selected_customer != "--" else ["--"])
 
 # Step 2: MOM Summary
 if selected_customer != "--" and selected_date != "--":
