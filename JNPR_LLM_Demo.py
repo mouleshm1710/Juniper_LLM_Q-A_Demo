@@ -221,14 +221,6 @@ Transcript:
 Please generate a 200 words complete professional summary (Minutes of the Meeting), capturing key points discussed, pain points, proposed solutions, and follow-ups. Keep it complete, concise and business-friendly.
 """
 
-        # LLM Call
-        hf_api_token = "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"
-        api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
-        headers = {"Authorization": f"Bearer {hf_api_token}"}
-        data = {"inputs": prompt, "parameters": {"max_new_tokens": 300}}
-
-        response = requests.post(api_url, headers=headers, json=data)
-
         def clean_summary_text(raw_summary: str) -> str:
             # Remove Markdown headers like #, ##, etc.
             content = re.sub(r'^#+\s*', '', raw_summary, flags=re.MULTILINE)
@@ -240,24 +232,33 @@ Please generate a 200 words complete professional summary (Minutes of the Meetin
             content = re.sub(r'\n{2,}', '\n\n', content)  # Optional: clean spacing
         
             return content
-
-        if response.status_code == 200:
-            with st.spinner("Processing Minutes of the Meeting..."):
+            
+        # LLM Call
+        hf_api_token = "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"
+        api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
+        headers = {"Authorization": f"Bearer {hf_api_token}"}
+        data = {"inputs": prompt, "parameters": {"max_new_tokens": 300}}
+        with st.spinner("Processing Minutes of the Meeting..."):
+            response = requests.post(api_url, headers=headers, json=data)
+    
+           
+    
+            if response.status_code == 200:
                 result = response.json()
                 summary = result[0]['generated_text']
                 summary = summary.split("business-friendly.")[-1].strip()
                 summary = clean_summary_text(summary)
                 st.write(summary)
-                
-
-            # Step 3: Q&A Mode
-            st.subheader("❓ Ask Specific Question About This Meeting")
-            user_question = st.text_input("Write a question:")
-
-            if user_question:
-                output = query_pipeline(user_question)
-                st.text(output)
-                if st.button("🔙 Back to Main"):
-                    st.experimental_rerun()
+                    
+    
+                # Step 3: Q&A Mode
+                st.subheader("❓ Ask Specific Question About This Meeting")
+                user_question = st.text_input("Write a question:")
+    
+                if user_question:
+                    output = query_pipeline(user_question)
+                    st.text(output)
+                    if st.button("🔙 Back to Main"):
+                        st.experimental_rerun()
         else:
             st.error("⚠️ LLM failed to generate summary. Check API.")
