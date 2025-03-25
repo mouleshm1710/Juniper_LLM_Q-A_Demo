@@ -9,6 +9,8 @@ from sentence_transformers import SentenceTransformer
 import streamlit as st
 import requests
 import re
+from streamlit.components.v1 import html
+
 # =============================
 # 1. Load Sample Transcripts
 # =============================
@@ -235,7 +237,7 @@ def query_pipeline(user_query):
 
 
 # === Streamlit Frontend ===
-st.image("juniper_logo.png", width=180)
+st.image("juniper_logo.png", width=100)
 st.title("Juniper Meeting Insights Q&A (Working Demo)")
 
 # ℹ️ Hoverable Technical Info Tooltip (HTML hack)
