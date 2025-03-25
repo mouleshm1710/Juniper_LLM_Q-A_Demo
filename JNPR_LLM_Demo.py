@@ -147,13 +147,13 @@ def query_pipeline(user_query):
     prompt = "Here are some meeting notes:\n"
     for item in retrieved_chunks:
         prompt += f"- {item['chunk']}\n"
-    prompt += f"\nAnswer the following question: {user_query}"
+    prompt += f"\nAnswer the question. Do not explain your thought process, the following is your question: {user_query}"
 
     # Call LLM API
     hf_api_token = "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"
     api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
     headers = {"Authorization": f"Bearer {hf_api_token}"}
-    data = {"inputs": prompt, "parameters": {"max_new_tokens": 200}}
+    data = {"inputs": prompt, "parameters": {"max_new_tokens": 150}}
 
     response = requests.post(api_url, headers=headers, json=data)
     if response.status_code != 200:
@@ -218,8 +218,7 @@ Please generate a 200 words complete professional summary (Minutes of the Meetin
                 summary = result[0]['generated_text']
                 summary = summary.split("business-friendly.")[-1].strip()
                 summary = clean_summary_text(summary)
-
-                #st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
+                
                 st.write(summary)
 
                 st.subheader("❓ Ask Specific Question About This Meeting")
@@ -232,63 +231,3 @@ Please generate a 200 words complete professional summary (Minutes of the Meetin
                         st.experimental_rerun()
             else:
                 st.error("⚠️ LLM failed to generate summary. Check API.")
-
-
-# # Step 2: MOM Summary
-# if st.button("Generate MOM...")
-# if selected_customer != "Select" and selected_date != "Select":
-#     #st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
-
-#     meeting = next((t for t in transcripts if t["customer"] == selected_customer and t["date"] == selected_date), None)
-#     if meeting:
-#         prompt = f"""You are an AI assistant helping summarize enterprise customer meetings.
-
-# Meeting: {meeting['customer']}  
-# Date: {meeting['date']}
-
-# Transcript:
-# {meeting['transcript']}
-
-# Please generate a 200 words complete professional summary (Minutes of the Meeting), capturing key points discussed, pain points, proposed solutions, and follow-ups. Keep it complete, concise and business-friendly.
-# """
-
-#         def clean_summary_text(raw_summary: str) -> str:
-#             # Remove Markdown headers like #, ##, etc.
-#             content = re.sub(r'^#+\s*', '', raw_summary, flags=re.MULTILINE)
-        
-#             # Remove extra asterisks or markdown formatting
-#             content = re.sub(r'\*\*|__|\*|_', '', content)
-        
-#             # Remove unnecessary line breaks if needed
-#             content = re.sub(r'\n{2,}', '\n\n', content)  # Optional: clean spacing
-        
-#             return content
-            
-#         # LLM Call
-#         hf_api_token = "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"
-#         api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
-#         headers = {"Authorization": f"Bearer {hf_api_token}"}
-#         data = {"inputs": prompt, "parameters": {"max_new_tokens": 300}}
-#         response = requests.post(api_url, headers=headers, json=data)
-
-       
-
-#         if response.status_code == 200:
-#             result = response.json()
-#             summary = result[0]['generated_text']
-#             summary = summary.split("business-friendly.")[-1].strip()
-#             summary = clean_summary_text(summary)
-#             st.write(summary)
-                
-
-#             # Step 3: Q&A Mode
-#             st.subheader("❓ Ask Specific Question About This Meeting")
-#             user_question = st.text_input("Write a question:")
-
-#             if user_question:
-#                 output = query_pipeline(user_question)
-#                 st.text(output)
-#                 if st.button("🔙 Back to Main"):
-#                     st.experimental_rerun()
-#         else:
-#             st.error("⚠️ LLM failed to generate summary. Check API.")
