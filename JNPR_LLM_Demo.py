@@ -1,4 +1,4 @@
-# =============================
+fic# =============================
 # Install Libraries First (CMD)
 # pip install faiss-cpu sentence-transformers streamlit requests numpy
 # =============================
@@ -246,16 +246,17 @@ Please generate a 200 words complete professional summary (Minutes of the Meetin
             summary = result[0]['generated_text']
             summary = summary.split("business-friendly.")[-1].strip()
             summary = clean_summary_text(summary)
+            st.spinner("Processing your query...")
             st.write(summary)
 
             # Step 3: Q&A Mode
-            st.subheader("❓ Ask Questions About This Meeting")
-            user_question = st.text_input("Ask a question:")
+            st.subheader("❓ Ask Specific Question About This Meeting")
+            user_question = st.text_input("Write a question:")
 
             if user_question:
                 output = query_pipeline(user_question)
                 st.text(output)
-                if st.button("🔙 Back to Home"):
+                if st.button("🔙 Back to Main"):
                     st.experimental_rerun()
         else:
             st.error("⚠️ LLM failed to generate summary. Check API.")
