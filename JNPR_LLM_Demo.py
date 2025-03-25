@@ -206,7 +206,7 @@ selected_date = st.selectbox("Select Meeting Date", ["Select"] + meeting_dates i
 
 # Step 2: MOM Summary
 if selected_customer != "--" and selected_date != "--":
-    st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
+    #st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
 
     meeting = next((t for t in transcripts if t["customer"] == selected_customer and t["date"] == selected_date), None)
     if meeting:
@@ -233,7 +233,7 @@ Please generate a professional summary (Minutes of the Meeting), capturing key p
             result = response.json()
             summary = result[0]['generated_text']
             #st.markdown("✅ **Summary:**")
-            summary = summary.split("business-friendly")[-1].strip()
+            summary = summary.split("business-friendly.")[-1].strip()
             st.write(summary)
 
             # Step 3: Q&A Mode
