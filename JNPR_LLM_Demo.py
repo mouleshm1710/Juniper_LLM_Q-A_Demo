@@ -239,44 +239,7 @@ def query_pipeline(user_query):
 # === Streamlit Frontend ===
 st.image("juniper_logo.png", width=100)
 st.title("Juniper Meeting Insights Q&A (Working Demo)")
-
-# ℹ️ Hoverable Technical Info Tooltip (HTML hack)
-html("""
-<div style='display: flex; align-items: center;'>
-    <h4 style='margin-right: 8px;'>ℹ️</h4>
-    <div style='position: relative; display: inline-block;'>
-        <span style='text-decoration: underline dotted; cursor: help;' title="
-🔍 What this does:
-- Lets you ask natural questions about customer meetings.
-- Retrieves similar past conversations using vector search (FAISS).
-- Sends them to an LLM to generate a relevant answer.
-
-🛡️ Why restricted context?
-- Ensures privacy and domain relevance.
-- Keeps responses tightly aligned to internal transcripts.
-
-🚀 What could enhance this?
-- Add conversational memory.
-- Enable follow-ups & refining queries (chatbot-style UX).
-
-🏠 Why Streamlit?
-- Fast to prototype, but if hosting in-house:
-    → Consider Flask, FastAPI + internal auth proxy.
-
-📈 How to scale?
-- Horizontally: Distribute FAISS across services or use vector DBs.
-- Vertically: Use GPU inference servers or batch incoming LLM requests.
-        ">
-            Hover here for technical notes
-        </span>
-    </div>
-</div>
-""")
-
-
-from streamlit.components.v1 import html
-
-# Suggested starter questions
+# Suggested questions
 suggested_questions = [
     "What solution did Juniper recommend to XYZ Telecom to reduce latency issues?",
     "How does Paragon Automation help XYZ Telecom reduce operational costs?",
@@ -290,18 +253,20 @@ suggested_questions = [
     "What AI-driven recommendations were provided to optimize resource allocation for Beta Financial Group?"
 ]
 
-st.markdown("### 💡 Suggested Questions")
-for question in suggested_questions:
-    if st.button(question):
-        st.session_state["user_question"] = question  # Sets the input below
-
-# Set default state for input
+# Initialize user input in session state if not present
 if "user_question" not in st.session_state:
     st.session_state["user_question"] = ""
 
-# Input box
-user_question = st.text_input("Ask your question about customer meetings:", value=st.session_state["user_question"])
-###user_question = st.text_input("Ask your question about customer meetings:")
+# Display the input box
+user_question = st.text_input("Ask your question about customer meetings:", value=st.session_state["user_question"], key="user_question")
+
+# Show suggestions only when the input is focused or empty
+if st.session_state["user_question"] == "":
+    with st.expander("💡 Suggested Example Questions (click to autofill)"):
+        for q in suggested_questions:
+            if st.button(q):
+                st.session_state["user_question"] = q
+                st.experimental_rerun()
 
     
 if user_question:
