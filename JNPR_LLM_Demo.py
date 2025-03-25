@@ -260,5 +260,5 @@ Please generate a 200 words complete professional summary (Minutes of the Meetin
                     st.text(output)
                     if st.button("🔙 Back to Main"):
                         st.experimental_rerun()
-        else:
-            st.error("⚠️ LLM failed to generate summary. Check API.")
+            else:
+                st.error("⚠️ LLM failed to generate summary. Check API.")
