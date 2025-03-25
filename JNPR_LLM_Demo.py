@@ -211,28 +211,27 @@ Please generate a 200 words complete professional summary (Minutes of the Meetin
             headers = {"Authorization": f"Bearer {hf_api_token}"}
             data = {"inputs": prompt, "parameters": {"max_new_tokens": 300}}
 
-            with st.spinner("⏳ Generating professional MOM summary..."):
-                response = requests.post(api_url, headers=headers, json=data)
+            response = requests.post(api_url, headers=headers, json=data)
 
-                if response.status_code == 200:
-                    result = response.json()
-                    summary = result[0]['generated_text']
-                    summary = summary.split("business-friendly.")[-1].strip()
-                    summary = clean_summary_text(summary)
+            if response.status_code == 200:
+                result = response.json()
+                summary = result[0]['generated_text']
+                summary = summary.split("business-friendly.")[-1].strip()
+                summary = clean_summary_text(summary)
 
-                    st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
-                    st.write(summary)
+                #st.subheader("📄 Meeting Summary (Minutes of the Meeting)")
+                st.write(summary)
 
-                    st.subheader("❓ Ask Specific Question About This Meeting")
-                    user_question = st.text_input("Write a question:")
+                st.subheader("❓ Ask Specific Question About This Meeting")
+                user_question = st.text_input("Write a Question:")
 
-                    if user_question:
-                        output = query_pipeline(user_question)
-                        st.text(output)
-                        if st.button("🔙 Back to Main"):
-                            st.experimental_rerun()
-                else:
-                    st.error("⚠️ LLM failed to generate summary. Check API.")
+                if user_question:
+                    output = query_pipeline(user_question)
+                    st.text(output)
+                    if st.button("🔙 Back to Main"):
+                        st.experimental_rerun()
+            else:
+                st.error("⚠️ LLM failed to generate summary. Check API.")
 
 
 # # Step 2: MOM Summary
