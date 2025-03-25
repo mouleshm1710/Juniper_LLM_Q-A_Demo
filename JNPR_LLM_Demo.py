@@ -234,8 +234,15 @@ Please generate a professional summary (Minutes of the Meeting), capturing key p
             summary = result[0]['generated_text']
             #st.markdown("✅ **Summary:**")
             summary = summary.split("business-friendly.")[-1].strip()
-            formatted_summary = summary.replace("\n", "<br>")
-            st.markdown(f"<div style='font-size:16px;'>{formatted_summary}</div>", unsafe_allow_html=True) 
+            styled_summary = f"""
+            <div style="font-family: 'Segoe UI', sans-serif; font-size:16px; line-height:1.6">
+            {summary.replace('# ', '<h2>').replace('## ', '<h3>').replace('\n- ', '<br>• ').replace('\n', '<br>')}
+            </div>
+            """
+
+            st.markdown(styled_summary, unsafe_allow_html=True)
+            #formatted_summary = summary.replace("\n", "<br>")
+            #st.markdown(f"<div style='font-size:16px;'>{formatted_summary}</div>", unsafe_allow_html=True) 
             #st.markdown(summary, unsafe_allow_html=True)
             #st.write(summary)
 
