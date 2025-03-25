@@ -229,22 +229,24 @@ Please generate a professional summary (Minutes of the Meeting), capturing key p
 
         response = requests.post(api_url, headers=headers, json=data)
 
+        def clean_summary_text(raw_summary: str) -> str:
+            # Remove Markdown headers like #, ##, etc.
+            content = re.sub(r'^#+\s*', '', raw_summary, flags=re.MULTILINE)
+        
+            # Remove extra asterisks or markdown formatting
+            content = re.sub(r'\*\*|__|\*|_', '', content)
+        
+            # Remove unnecessary line breaks if needed
+            content = re.sub(r'\n{2,}', '\n\n', content)  # Optional: clean spacing
+        
+            return content
+
         if response.status_code == 200:
             result = response.json()
             summary = result[0]['generated_text']
-            #st.markdown("✅ **Summary:**")
             summary = summary.split("business-friendly.")[-1].strip()
-            styled_summary = f"""
-            <div style="font-family: 'Segoe UI', sans-serif; font-size:16px; line-height:1.6">
-            {summary.replace('# ', '<h2>').replace('## ', '<h3>').replace('\n- ', '<br>• ').replace('\n', '<br>')}
-            </div>
-            """
-
-            st.markdown(styled_summary, unsafe_allow_html=True)
-            #formatted_summary = summary.replace("\n", "<br>")
-            #st.markdown(f"<div style='font-size:16px;'>{formatted_summary}</div>", unsafe_allow_html=True) 
-            #st.markdown(summary, unsafe_allow_html=True)
-            #st.write(summary)
+            summary = clean_summary_text(summary)
+            st.write(summary)
 
             # Step 3: Q&A Mode
             st.subheader("❓ Ask Questions About This Meeting")
