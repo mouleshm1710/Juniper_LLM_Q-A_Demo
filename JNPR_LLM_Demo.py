@@ -1,4 +1,4 @@
-fic# =============================
+#fic# =============================
 # Install Libraries First (CMD)
 # pip install faiss-cpu sentence-transformers streamlit requests numpy
 # =============================
