@@ -120,40 +120,82 @@ def chunk_transcripts(transcripts, chunk_size=5, overlap=1):
             })
     return all_chunks
 
-chunked_data = chunk_transcripts(transcripts)
-chunk_texts = [c["chunk"] for c in chunked_data]
 
-# === Embedding & FAISS Setup ===
+# === Step 2: Prepare per-meeting FAISS cache ===
+def prepare_meeting_cache(transcripts, model):
+    chunked_data = chunk_transcripts(transcripts)
+    meeting_cache = {}
+
+    for c in chunked_data:
+        key = (c['customer'], c['date'])
+        if key not in meeting_cache:
+            meeting_cache[key] = {"chunks": [], "texts": []}
+        meeting_cache[key]["chunks"].append(c)
+        meeting_cache[key]["texts"].append(c["chunk"])
+
+    for key in meeting_cache:
+        texts = meeting_cache[key]["texts"]
+        embeddings = model.encode(texts)
+        index = faiss.IndexFlatL2(embeddings.shape[1])
+        index.add(embeddings)
+        meeting_cache[key]["embeddings"] = embeddings
+        meeting_cache[key]["index"] = index
+
+    return meeting_cache
+
+# instantiate the model
 model = SentenceTransformer('all-MiniLM-L6-v2')
-chunk_embeddings = model.encode(chunk_texts)
+# === Prepare cache only once ===
+meeting_cache = prepare_meeting_cache(transcripts, model)
 
-dimension = chunk_embeddings.shape[1]
-index = faiss.IndexFlatL2(dimension)
-index.add(np.array(chunk_embeddings))
+def search_faiss(user_query, customer, date, meeting_cache, model):
+    key = (customer, date)
+    if key not in meeting_cache:
+        return [], []
 
-id_to_chunk = {i: chunked_data[i] for i in range(len(chunked_data))}
+    chunks = meeting_cache[key]["chunks"]
+    index = meeting_cache[key]["index"]
+    query_embedding = model.encode([user_query])
+    D, I = index.search(query_embedding, k=min(3, len(chunks)))
 
-def search_faiss(user_query, customer=None, date=None):
-    # Filter chunks by meeting if customer and date are given
-    if customer and date:
-        filtered_chunks = [c for c in chunked_data if c['customer'] == customer and c['date'] == date]
-        filtered_texts = [c['chunk'] for c in filtered_chunks]
-        if not filtered_texts:
-            return [], []
-        filtered_embeddings = model.encode(filtered_texts)
-        query_embedding = model.encode([user_query])
-        index_local = faiss.IndexFlatL2(filtered_embeddings.shape[1])
-        index_local.add(np.array(filtered_embeddings))
-        D, I = index_local.search(np.array(query_embedding), k=min(3, len(filtered_texts)))
-        return [filtered_chunks[i] for i in I[0]], D[0]
-    else:
-        query_embedding = model.encode([user_query])
-        D, I = index.search(np.array(query_embedding), k=3)
-        retrieved_texts = [id_to_chunk[i] for i in I[0]]
-        return retrieved_texts, D[0]
+    return [chunks[i] for i in I[0]], D[0]
+
+
+
+# chunked_data = chunk_transcripts(transcripts)
+# chunk_texts = [c["chunk"] for c in chunked_data]
+
+# # === Embedding & FAISS Setup ===
+# model = SentenceTransformer('all-MiniLM-L6-v2')
+# chunk_embeddings = model.encode(chunk_texts)
+
+# dimension = chunk_embeddings.shape[1]
+# index = faiss.IndexFlatL2(dimension)
+# index.add(np.array(chunk_embeddings))
+
+# id_to_chunk = {i: chunked_data[i] for i in range(len(chunked_data))}
+
+# def search_faiss(user_query, customer=None, date=None):
+#     # Filter chunks by meeting if customer and date are given
+#     if customer and date:
+#         filtered_chunks = [c for c in chunked_data if c['customer'] == customer and c['date'] == date]
+#         filtered_texts = [c['chunk'] for c in filtered_chunks]
+#         if not filtered_texts:
+#             return [], []
+#         filtered_embeddings = model.encode(filtered_texts)
+#         query_embedding = model.encode([user_query])
+#         index_local = faiss.IndexFlatL2(filtered_embeddings.shape[1])
+#         index_local.add(np.array(filtered_embeddings))
+#         D, I = index_local.search(np.array(query_embedding), k=min(3, len(filtered_texts)))
+#         return [filtered_chunks[i] for i in I[0]], D[0]
+#     else:
+#         query_embedding = model.encode([user_query])
+#         D, I = index.search(np.array(query_embedding), k=3)
+#         retrieved_texts = [id_to_chunk[i] for i in I[0]]
+#         return retrieved_texts, D[0]
 
 def query_pipeline(user_query):
-    retrieved_chunks, _ = search_faiss(user_query, st.session_state.selected_customer, st.session_state.selected_date)
+    retrieved_chunks, _ = search_faiss(user_query, st.session_state.selected_customer, st.session_state.selected_date, meeting_cache, model)
 
     prompt = "Here are some meeting notes:\n"
     for item in retrieved_chunks:
